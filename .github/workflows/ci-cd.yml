@@ -1,0 +1,76 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+
+      - name: Build Rust project
+        run: cargo build --release
+        working-directory: ./agent
+
+      - name: Run Rust tests
+        run: cargo test
+        working-directory: ./agent
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies for UI
+        run: npm install
+        working-directory: ./ui
+
+      - name: Build UI
+        run: npm run build
+        working-directory: ./ui
+
+      - name: Install dependencies for API
+        run: npm install
+        working-directory: ./api
+
+      - name: Test API
+        run: node ./server.js & sleep 5 && curl -f http://localhost:3000 || exit 1
+        working-directory: ./api
+
+  package:
+    name: Package Application
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Package Rust agent
+        run: cargo build --release
+        working-directory: ./agent
+
+      - name: Package UI
+        run: npm run build
+        working-directory: ./ui
+
+      - name: Create release artifacts
+        run: |
+          mkdir -p artifacts
+          cp ./agent/target/release/antivirus-agent ./artifacts/
+          cp -r ./ui/dist ./artifacts/ui
+          echo "Packaging complete."

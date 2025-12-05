@@ -1,0 +1,108 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create for the release (e.g. v1.0.0)'
+        required: true
+      release_name:
+        description: 'Release name'
+        required: false
+      prerelease:
+        description: 'Set to true to mark release as prerelease'
+        required: false
+        default: 'false'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build UI
+        working-directory: ./ui
+        run: |
+          npm ci
+          npm run build:ci
+
+      - name: Upload UI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-dist
+          path: ui/dist
+
+      - name: Setup Rust
+        uses: dtolnay/gh-actions-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build agent (linux)
+        working-directory: ./agent
+        run: |
+          cargo build --release --locked
+
+      - name: Upload agent linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-linux
+          path: agent/target/release
+
+      - name: Build agent (windows)
+        runs-on: windows-latest
+        uses: actions/checkout@v4
+      - name: Setup Rust (windows)
+        if: runner.os == 'Windows'
+        uses: dtolnay/gh-actions-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: Build agent windows (in separate step)
+        if: runner.os == 'Windows'
+        run: |
+          cd agent
+          cargo build --release --locked
+
+      - name: Upload agent windows
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-windows
+          path: agent/target/release
+
+      - name: Download artifacts to prepare release
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare release archives
+        run: |
+          mkdir out
+          if [ -d release-artifacts/ui-dist ]; then zip -r out/ui-dist.zip release-artifacts/ui-dist; fi
+          if [ -d release-artifacts/agent-linux ]; then zip -r out/agent-linux.zip release-artifacts/agent-linux; fi
+          if [ -d release-artifacts/agent-windows ]; then zip -r out/agent-windows.zip release-artifacts/agent-windows; fi
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: ${{ github.event.inputs.release_name || github.event.inputs.tag }}
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            out/ui-dist.zip
+            out/agent-linux.zip
+            out/agent-windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

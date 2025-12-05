@@ -1,0 +1,11 @@
+[package]
+name = "antivirus-agent"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.3", features = ["derive"] }
+notify = "5.0"
+
+[profile.release]
+opt-level = 3

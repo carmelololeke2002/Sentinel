@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Roboto', sans-serif;
+}
+
+.text-neon {
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+}
+
+.bg-dark {
+  background-color: #0d1117;
+}
+
+.sidebar {
+  width: 200px;
+  background: linear-gradient(180deg, #1f2937, #111827);
+  color: #fff;
+  padding: 1rem;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin: 1rem 0;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.sidebar li:hover {
+  color: #00ffff;
+}

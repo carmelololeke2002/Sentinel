@@ -1,0 +1,46 @@
+{
+  "name": "antivirus-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "npm run dev",
+    "build": "vite build",
+    "build:ci": "vite build --mode production",
+    "serve": "vite preview",
+    "lint": "eslint --ext .js,.jsx ./src",
+    "lint:fix": "eslint --ext .js,.jsx ./src --fix",
+    "format": "prettier --write \"**/*.{js,jsx,json,css,md}\"",
+    "check": "npm run lint",
+    "test": "vitest",
+    "test:ci": "vitest --run",
+    "prepare": "husky install",
+    "clean": "rimraf node_modules dist"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "bootstrap": "^5.3.8",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tailwindcss": "^3.0.0"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.0.0",
+    "prettier": "^2.0.0",
+    "rimraf": "^5.0.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^14.0.0",
+    "vitest": "^1.0.0",
+    "@testing-library/react": "^14.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx}": [
+      "npm run lint:fix",
+      "npm run format",
+      "git add"
+    ]
+  }
+}
