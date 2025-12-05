@@ -15,77 +15,104 @@ on:
         default: 'false'
 
 jobs:
-  build-and-release:
+  build-ui:
+    name: Build UI
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ui
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
+      - name: Install dependencies
+        run: npm ci
       - name: Build UI
-        working-directory: ./ui
         run: |
-          npm ci
           npm run build:ci
-
       - name: Upload UI artifact
         uses: actions/upload-artifact@v4
         with:
           name: ui-dist
           path: ui/dist
 
+  build-agent-linux:
+    name: Build agent (linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agent
+    steps:
+      - uses: actions/checkout@v4
       - name: Setup Rust
         uses: dtolnay/gh-actions-rust-toolchain@v1
         with:
           toolchain: stable
-
-      - name: Build agent (linux)
-        working-directory: ./agent
-        run: |
-          cargo build --release --locked
-
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build (release)
+        run: cargo build --release --locked
       - name: Upload agent linux
         uses: actions/upload-artifact@v4
         with:
           name: agent-linux
           path: agent/target/release
 
-      - name: Build agent (windows)
-        runs-on: windows-latest
-        uses: actions/checkout@v4
-      - name: Setup Rust (windows)
-        if: runner.os == 'Windows'
+  build-agent-windows:
+    name: Build agent (windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ./agent
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
         uses: dtolnay/gh-actions-rust-toolchain@v1
         with:
           toolchain: stable
-      - name: Build agent windows (in separate step)
-        if: runner.os == 'Windows'
-        run: |
-          cd agent
-          cargo build --release --locked
-
+      - name: Build (release)
+        run: cargo build --release --locked
       - name: Upload agent windows
-        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: agent-windows
           path: agent/target/release
 
-      - name: Download artifacts to prepare release
+  create_release:
+    name: Prepare and Create Release
+    runs-on: ubuntu-latest
+    needs: [build-ui, build-agent-linux, build-agent-windows]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download UI dist artifact
         uses: actions/download-artifact@v4
         with:
-          path: release-artifacts
-
-      - name: Prepare release archives
+          name: ui-dist
+          path: release-artifacts/ui
+      - name: Download agent linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-linux
+          path: release-artifacts/agent-linux
+      - name: Download agent windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-windows
+          path: release-artifacts/agent-windows
+      - name: Prepare release assets
         run: |
-          mkdir out
-          if [ -d release-artifacts/ui-dist ]; then zip -r out/ui-dist.zip release-artifacts/ui-dist; fi
+          set -e
+          mkdir -p out
+          if [ -d release-artifacts/ui ]; then zip -r out/ui-dist.zip release-artifacts/ui; fi
           if [ -d release-artifacts/agent-linux ]; then zip -r out/agent-linux.zip release-artifacts/agent-linux; fi
-          if [ -d release-artifacts/agent-windows ]; then zip -r out/agent-windows.zip release-artifacts/agent-windows; fi
-
+          if [ -d "release-artifacts/agent-windows" ]; then zip -r out/agent-windows.zip release-artifacts/agent-windows; fi
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -96,7 +123,6 @@ jobs:
           prerelease: ${{ github.event.inputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
