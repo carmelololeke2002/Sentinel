@@ -1,0 +1,9 @@
+﻿node_modules/
+ui/node_modules/
+api/node_modules/
+agent/target/
+ui/dist/
+release/
+antivirus-release.zip
+*.log
+.env
